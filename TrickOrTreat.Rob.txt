@@ -1,0 +1,38 @@
+{{$cooldownTime := 3600}}
+{{$cooldownDBKey := "cooldown_tot.rob"}}
+{{$candyDBKey := "candy"}}
+
+{{$args := (parseArgs 1 "Rob a player's candy"
+    (carg "userid" "Player to rob")
+)}}
+
+{{$victimUser := (userArg ($args.Get 0))}}
+{{$theifMember := (getMember .User.ID)}}
+{{$victimMember := (getMember $victimUser.ID)}}
+
+{{if (dbGet .User.ID $cooldownDBKey)}}
+    {{.User.Mention}}: You can only try to rob someone every hour.
+{{else}}
+    {{dbSetExpire .User.ID $cooldownDBKey 1 $cooldownTime}}
+
+    {{if eq .User.ID $victimUser.ID}}
+        {{.User.Mention}}: You can't rob yourself...
+    {{else}}
+        {{$chance := (randInt 100)}}
+
+        {{if lt $chance 40}} {{/*Success*/}}
+            {{$victimCandy := (dbGet $victimUser.ID $candyDBKey).Value}}
+            {{$percentToSteal := (randInt 30 100)}}
+
+            {{$candyToIncr := (roundFloor (mult (fdiv $percentToSteal 100) $victimCandy))}}
+            {{$theifNewCandy := (dbIncr .User.ID $candyDBKey $candyToIncr)}}
+            {{$victimNewCandy := (dbIncr $victimUser.ID $candyDBKey (mult $candyToIncr -1))}}
+
+            {{sendMessage nil (joinStr "" .User.Mention ": You succeeded in robbing **" $victimMember.Nick "**! You stole " (toInt $percentToSteal) "%, or " (toInt $candyToIncr) " 🍬. Your new balance is " (toInt $theifNewCandy) " 🍬.")}}
+            {{sendMessage nil (joinStr "" $victimUser.Mention ": **" $theifMember.Nick "** robbed your candy! They stole " (toInt $candyToIncr) " 🍬. Your new balance is " (toInt $victimNewCandy) " 🍬.")}}
+        {{else}} {{/*Failed*/}}
+            {{sendMessage nil (joinStr "" .User.Mention ": You failed. <:oof:600090802936348692>")}}
+            {{sendMessage nil (joinStr "" $victimUser.Mention ": **" $theifMember.Nick "** attempted to rob you, but failed.")}}
+        {{end}}
+    {{end}}    
+{{end}}

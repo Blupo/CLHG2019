@@ -1,0 +1,23 @@
+{{$cooldownTime := 5}}
+{{$cooldownDBKey := "cooldown_tot.beg"}}
+
+{{$candyDBKey := "candy"}}
+
+{{$userID := (.User.ID)}}
+
+{{if (dbGet (toInt64 $userID) $cooldownDBKey)}}
+    {{.User.Mention}}: You can only get down on your knees and beg every {{$cooldownTime}} seconds.
+{{else}}
+    {{dbSetExpire (toInt64 $userID) $cooldownDBKey 1 $cooldownTime}}
+    {{$chance := (randInt 100)}}
+
+    {{if lt $chance 50}} {{/*Success*/}}
+        {{$candyToIncr := (randInt 1 3)}}
+        {{$newCandy := (dbIncr (toInt64 $userID) $candyDBKey $candyToIncr)}}
+
+        {{sendMessage nil (joinStr "" .User.Mention ": You decided to beg for some candy. It worked.")}}
+        {{sendMessage nil (joinStr "" "Gave " $candyToIncr " 🍬 to **" .User.Username "**, new balance is " (toInt $newCandy))}}
+    {{else}} {{/*Failed*/}}
+        {{sendMessage nil (joinStr "" .User.Mention ": You decided to beg for some candy. It didn't work.")}}
+    {{end}}
+{{end}}

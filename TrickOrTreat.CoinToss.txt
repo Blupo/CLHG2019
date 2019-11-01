@@ -1,0 +1,46 @@
+{{$cooldownTime := 600}}
+{{$cooldownDBKey := "cooldown_tot.cointoss"}}
+{{$candyDBKey := "candy"}}
+
+{{$args := (parseArgs 2 "Bet your candy on a coin toss, usage: `y!trickortreat cointoss <Amount:Int> <Side:Heads/Tails>`"
+    (carg "int" "Amount to bet")
+    (carg "string" "Heads/Tails")
+)}}
+
+{{$sides := (sdict
+    "1" "HEADS"
+    "2" "TAILS"
+)}}
+
+{{$currentCandy := (toInt (dbGet .User.ID $candyDBKey).Value)}}
+{{$candyToBet := ($args.Get 0)}}
+{{$side := (upper ($args.Get 1))}}
+
+{{if (dbGet .User.ID $cooldownDBKey)}}
+    {{.User.Mention}}: You can only do a coin toss every 10 minutes.
+{{else}}
+    {{dbSetExpire .User.ID $cooldownDBKey 1 $cooldownTime}}
+
+    {{if lt $candyToBet 100}}
+        {{.User.Mention}}: You must bet at least 100 🍬.
+    {{else}}
+        {{if not (or (eq $side "HEADS") (eq $side "TAILS"))}}
+            {{.User.Mention}}: You must pick either `HEADS` or `TAILS`.
+        {{else}}
+            {{if lt $currentCandy $candyToBet}}
+                {{.User.Mention}}: You don't have that much candy to bet, you only have {{$currentCandy}}!
+            {{else}}
+                {{$coinSide := (toString (randInt 1 2))}}
+                {{$coinSideName := ($sides.Get $coinSide)}}
+
+                {{if eq $coinSideName $side}}
+                    {{$newCandy := (dbIncr .User.ID $candyDBKey $candyToBet)}}
+                    {{.User.Mention}}: The coin landed on **{{$coinSideName}}**. You chose **{{$side}}**, meaning that you **WON {{$candyToBet}}** 🍬. Your new balance is {{$newCandy}}.
+                {{else}}
+                    {{$newCandy := (dbIncr .User.ID $candyDBKey (mult $candyToBet -1))}}
+                    {{.User.Mention}}: The coin landed on **{{$coinSideName}}**. You chose **{{$side}}**, meaning that you **LOST {{$candyToBet}}** 🍬. Your new balance is {{$newCandy}}.
+                {{end}}
+            {{end}}
+        {{end}}
+    {{end}}
+{{end}}

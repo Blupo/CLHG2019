@@ -1,0 +1,35 @@
+{{$args := (parseArgs 2 "Give candy to a player"
+    (carg "userid" "Player to give candy to")
+    (carg "int" "Amount of candy to give")
+    (carg "string" "Confirmation")
+)}}
+
+{{$user := (userArg ($args.Get 0))}}
+{{$member := (getMember $user.ID)}}
+{{$candyToGive := ($args.Get 1)}}
+{{$confirmation := ($args.Get 2)}}
+
+{{$candyDBKey := "candy"}}
+{{$currentCandy := (toInt (dbGet .User.ID $candyDBKey).Value)}}
+
+{{if eq .User.ID $user.ID}}
+    {{.User.Mention}}: You can't give candy to yourself...
+{{else}}
+    {{if lt $currentCandy $candyToGive}}
+        {{.User.Mention}}: Insufficient 🍬 to give to {{$member.Nick}}, you only have {{$currentCandy}}
+    {{else}}
+        {{if gt $candyToGive 0}}
+            {{if $confirmation}}
+                {{$newCandySender := (dbIncr (toInt64 .User.ID) $candyDBKey (mult $candyToGive -1))}}
+                {{$newCandyReceiver := (dbIncr (toInt64 $user.ID) $candyDBKey $candyToGive)}}
+
+                {{sendMessage nil (joinStr "" .User.Mention ": Gave **" $member.Nick "** " $candyToGive " 🍬, your new balance is " (toInt $newCandySender))}}
+                {{sendMessage nil (joinStr "" $user.Mention ": **" .User.Username "** has given you " $candyToGive " 🍬, your new balance is " (toInt $newCandyReceiver))}}
+            {{else}}
+                {{.User.Mention}}: Please run the command again with the word `confirm` at the end to confirm that you would like to give {{$candyToGive}} 🍬 to **{{$member.Nick}}**.
+            {{end}}
+        {{else}}
+            {{.User.Mention}}: Amount of candy must be >= 1
+        {{end}}
+    {{end}}
+{{end}}

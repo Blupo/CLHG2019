@@ -1,0 +1,38 @@
+{{$successes := (cslice
+    "After some careful planning, you actually got away with it!"
+    "Apparently no one was looking while you decided to shove candy into your bag."
+    "You were spotted, but you managed to get away with a lot of candy!"
+    "A ghost appeared in the store, which gave you the perfect opportunity to grab the candy and go!"
+)}}
+
+{{$fails := (cslice
+    "You got caught due to your horrible preparation and planning. Good job."
+    "You forgot that the store has security cameras. Whoops."
+    "You got the candy and ran away safely! Actually no, the store guards blocked all the exits so you couldn't escape."
+)}}
+
+{{$cooldownTime := 3600}}
+{{$cooldownDBKey := "cooldown_tot.heist1"}}
+
+{{$candyDBKey := "candy"}}
+
+{{$userID := (.User.ID)}}
+{{$member := (getMember $userID)}}
+
+{{if (dbGet (toInt64 $userID) $cooldownDBKey)}}
+    {{.User.Mention}}: You can only go on a heist every hour.
+{{else}}
+    {{dbSetExpire (toInt64 $userID) $cooldownDBKey 1 $cooldownTime}}
+    {{$chance := (randInt 100)}}
+
+    {{if lt $chance 30}} {{/*Success*/}}
+        {{$candyToIncr := (randInt 200 1000)}}
+        {{$newCandy := (dbIncr (toInt64 $userID) $candyDBKey $candyToIncr)}}
+
+        {{sendMessage nil (joinStr "" .User.Mention ": " (index $successes (randInt (add (len $successes) -1))))}}
+        {{sendMessage nil (joinStr "" "Gave " $candyToIncr " 🍬 to **" $member.Nick "**, new balance is " (toInt $newCandy))}}
+    {{else}} {{/*Failed*/}}
+        {{dbSet (toInt64 $userID) $candyDBKey 0}}
+        {{sendMessage nil (joinStr "" .User.Mention ": " (index $fails (randInt (add (len $fails) -1))) " You've been arrested, and your candy has been confiscated by the police. Better luck next time. <:oof:600090802936348692>")}}
+    {{end}}
+{{end}}

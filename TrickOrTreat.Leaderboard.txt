@@ -1,0 +1,11 @@
+{{$candyDBKey := "candy"}}
+{{$candyLeaderboard := (dbTopEntries "candy" 10 0)}}
+
+{{range $index, $candyEntry := $candyLeaderboard}}
+    {{- $member := (getMember $candyEntry.UserID) -}}
+    {{- if $member -}}
+        {{- joinStr "" "**" (add $index 1) "**. " $member.Nick ", " (toInt $candyEntry.Value) " 🍬\n" -}}
+    {{- else -}}
+        {{- joinStr "" "**" (add $index 1) "**. *? (" $candyEntry.UserID ")*, " (toInt $candyEntry.Value) " 🍬\n" -}}
+    {{- end -}}
+{{end}}

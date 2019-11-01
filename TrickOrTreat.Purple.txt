@@ -1,0 +1,12 @@
+{{$candyDBKey := "candy"}}
+{{$persistenceKey := "purple_redeemed"}}
+
+{{deleteTrigger 0}}
+{{if (dbGet .User.ID $persistenceKey)}}
+    {{sendDM "You've already used the secret key..."}}
+{{else}}
+    {{$newCandy := (dbIncr .User.ID $candyDBKey 11037)}}
+    {{dbSet .User.ID $persistenceKey 1}}
+
+    {{sendDM (joinStr "" "You've unlocked the secret key! You've been awarded 11037 🍬. Your new balance is " (toInt $newCandy))}}
+{{end}}

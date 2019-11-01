@@ -1,0 +1,122 @@
+{{$commonChoices := (cslice
+    (sdict "Text" "Here you go, have come candy!" "Min" 2 "Max" 10 "Mode" "Give")
+    (sdict "Text" "Trick or treat! There's a zombie on the other side of the door but it doesn't seem to want to eat your brains." "Min" 2 "Max" 7 "Mode" "Give")
+    (sdict "Text" "A fairy descends from the heavens to give you some candy. Thanks fairy!" "Min" 2 "Max" 10 "Mode" "Give")
+    (sdict "Text" "A skeleton rises from the ground to give you some dirty candy. Thanks... I guess." "Min" 2 "Max" 10 "Mode" "Give")
+    (sdict "Text" "Just a normal house, with a normal person giving you normal candy." "Min" 2 "Max" 10 "Mode" "Give")
+    (sdict "Text" "Your costume was convincing enough to get you some extra candy! What do you mean you're not wearing a costume?" "Min" 7 "Max" 28 "Mode" "Give")
+    (sdict "Text" "A black-and-white bear tries to sneak up on you, but you smack it with your candy bag, and it dropped some candy." "Min" 4 "Max" 12 "Mode" "Give")
+    (sdict "Text" "A person with sunglasses and a black suit walks up to you and gives you some candy. *Look for a man in a white suit.*" "Min" 1 "Max" 2 "Mode" "Give")
+)}}
+
+{{$uncommonChoices := (cslice
+    (sdict "Text" "You were going down the road to a house when you realised that you forgot your candy bag. Whoops." "Min" 0 "Max" 0 "Mode" "None")
+    (sdict "Text" "You were walking down the street when some kids started throwing eggs at you. You got away safely, but some of your candy fell out." "Min" 1 "Max" 10 "Mode" "Take")
+    (sdict "Text" "You got lost. While you’re trying to find your way back, you decide to eat some of your candy." "Min" 1 "Max" 3 "Mode" "Take")
+    (sdict "Text" "As you're walking down the street, you engage in a fight with a slime. Somehow you lost, and it took some of your candy as a prize." "Min" 1 "Max" 5 "Mode" "Take")
+    (sdict "Text" "As you're walking down the street, you engage in a fight with a slime. Unsurprisingly you won, but the slime turned into little green pieces of candy. Hmm." "Min" 5 "Max" 15 "Mode" "Give")
+    (sdict "Text" "A black-and-white bear snuck on up you and snatched some of your candy." "Min" 4 "Max" 7 "Mode" "Take")
+)}}
+
+{{$rareChoices := (cslice
+    (sdict "Text" "You got lost. While you’re trying to find your way back, you stumble across a bag of candy on the ground. Sweet!" "Min" 20 "Max" 50 "Mode" "Give")
+    (sdict "Text" "You decide to stand around doing nothing for a while." "Min" 0 "Max" 0 "Mode" "None")
+    (sdict "Text" "You were walking down the street when--OH MY GOD YOU'RE GETTING ROBBED--no, I'm just joking." "Min" 0 "Max" 0 "Mode" "None")
+)}}
+
+{{$choices := (sdict
+    "Common" $commonChoices
+    "Uncommon" $uncommonChoices
+    "Rare" $rareChoices
+)}}
+
+{{$cooldownTime := 5}}
+{{$cooldownDBKey := "cooldown_tot.area1"}}
+{{$candyDBKey := "candy"}}
+
+{{$userID := (.User.ID)}}
+{{$member := (getMember .User.ID)}}
+
+{{if (dbGet (toInt64 $userID) $cooldownDBKey)}}
+    {{.User.Mention}}: You can only go trick-or-treating every {{$cooldownTime}} seconds.
+{{else}}
+    {{dbSetExpire (toInt64 $userID) $cooldownDBKey 1 $cooldownTime}}
+    {{$chance := (randInt 100)}}
+
+    {{if lt $chance 10}} {{/*Rare*/}}
+        {{- $choice := (index $choices.Rare (randInt (len $choices.Rare))) -}}
+        
+        {{- joinStr "" .User.Mention ": " $choice.Text "\n" -}}
+
+        {{if eq $choice.Mode "None"}}
+        {{else if eq $choice.Mode "Give"}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey $candyToIncr) -}}
+            
+            {{- joinStr "" "Gave " $candyToIncr " 🍬 to **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+        {{else if eq $choice.Mode "Take"}} {{/*Need to check for negative candy*/}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $currentCandy := (toInt (dbGet (toInt64 $userID) $candyDBKey).Value) -}}
+
+            {{- if lt $currentCandy $candyToIncr -}}
+                {{- dbSet (toInt64 $userID) $candyDBKey 0 -}}
+                {{- joinStr "" "Took all of **" $member.Nick "**'s 🍬\n" -}}
+            {{- else -}}
+                {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey (mult $candyToIncr -1)) -}}
+                {{- joinStr "" "Took " $candyToIncr " 🍬 from **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+            {{- end -}}
+        {{else}}
+            {{- joinStr "" "Unrecognized option " $choice.Mode ", please report this error to <@559723376671981585>\n" -}}
+        {{end}}
+    {{else if lt $chance 30}} {{/*Uncommon*/}}
+        {{- $choice := (index $choices.Uncommon (randInt (len $choices.Uncommon))) -}}
+        
+        {{- joinStr "" .User.Mention ": " $choice.Text "\n" -}}
+
+        {{if eq $choice.Mode "None"}}
+        {{else if eq $choice.Mode "Give"}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey $candyToIncr) -}}
+            
+            {{- joinStr "" "Gave " $candyToIncr " 🍬 to **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+        {{else if eq $choice.Mode "Take"}} {{/*Need to check for negative candy*/}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $currentCandy := (toInt (dbGet (toInt64 $userID) $candyDBKey).Value) -}}
+
+            {{- if lt $currentCandy $candyToIncr -}}
+                {{- dbSet (toInt64 $userID) $candyDBKey 0 -}}
+                {{- joinStr "" "Took all of **" $member.Nick "**'s 🍬\n" -}}
+            {{- else -}}
+                {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey (mult $candyToIncr -1)) -}}
+                {{- joinStr "" "Took " $candyToIncr " 🍬 from **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+            {{- end -}}
+        {{else}}
+            {{- joinStr "" "Unrecognized option " $choice.Mode ", please report this error to <@559723376671981585>\n" -}}
+        {{end}}
+    {{else}} {{/*Common*/}}
+        {{- $choice := (index $choices.Common (randInt (len $choices.Common))) -}}
+        
+        {{- joinStr "" .User.Mention ": " $choice.Text "\n" -}}
+
+        {{if eq $choice.Mode "None"}}
+        {{else if eq $choice.Mode "Give"}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey $candyToIncr) -}}
+            
+            {{- joinStr "" "Gave " $candyToIncr " 🍬 to **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+        {{else if eq $choice.Mode "Take"}} {{/*Need to check for negative candy*/}}
+            {{- $candyToIncr := (randInt $choice.Min $choice.Max) -}}
+            {{- $currentCandy := (toInt (dbGet (toInt64 $userID) $candyDBKey).Value) -}}
+
+            {{- if lt $currentCandy $candyToIncr -}}
+                {{- dbSet (toInt64 $userID) $candyDBKey 0 -}}
+                {{- joinStr "" "Took all of **" $member.Nick "**'s 🍬\n" -}}
+            {{- else -}}
+                {{- $newCandy := (dbIncr (toInt64 $userID) $candyDBKey (mult $candyToIncr -1)) -}}
+                {{- joinStr "" "Took " $candyToIncr " 🍬 from **" $member.Nick "**, new balance is " (toInt $newCandy) "\n" -}}
+            {{- end -}}
+        {{else}}
+            {{- joinStr "" "Unrecognized option " $choice.Mode ", please report this error to <@559723376671981585>\n" -}}
+        {{end}}
+    {{end}}
+{{end}}

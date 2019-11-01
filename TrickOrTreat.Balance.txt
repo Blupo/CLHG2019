@@ -1,0 +1,14 @@
+{{$args := (parseArgs 0 "Get a player's balance"
+    (carg "userid" "User to lookup")
+)}}
+{{$user := (userArg ($args.Get 0))}}
+{{$candyDBKey := "candy"}}
+
+{{if $user}}
+    {{$userID := $user.ID}}
+    {{$member := (getMember $userID)}}
+    {{.User.Mention}}: {{$member.Nick}}'s current balance is {{toInt (dbGet (toInt64 $userID) $candyDBKey).Value}} 🍬
+{{else}}
+    {{$userID := .User.ID}}
+    {{.User.Mention}}: Your current balance is {{toInt (dbGet (toInt64 $userID) $candyDBKey).Value}} 🍬
+{{end}}
